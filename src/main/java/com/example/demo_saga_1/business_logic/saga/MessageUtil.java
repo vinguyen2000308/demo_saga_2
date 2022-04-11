@@ -30,4 +30,14 @@ public class MessageUtil {
         return replyType.equals(replyMessageClass.getSimpleName());
     }
 
+    public static void saveReplyMessage(Data data, MessageRepo messageRepo) {
+        Map<String, String> header = data.getHeader();
+        messageRepo.save(Message.builder()
+                .messageId(header.get("message_id"))
+                .header(header.toString())
+                .destination(header.get("reply_topic"))
+                .payload(data.getPayload())
+                .build());
+    }
+
 }

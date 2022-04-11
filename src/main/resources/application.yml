@@ -1,19 +1,15 @@
-kafka:
-  bootstrapAddress: 108.136.224.129:9092
 server:
   port: 8080
 spring:
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://108.136.236.166:3306/vinv_dev
+    url: jdbc:mariadb://108.136.236.166:3306/eventuate
     username: vinv
     password: vinv@app
-    kafka:
-      bootstrap-servers: 108.136.224.129:9092
     jpa:
       show-sql: true
   kafka:
     consumer:
       auto-offset-reset: latest
       group-id: 1
-    bootstrap-servers: 108.136.224.129:9092
+    bootstrap-servers: 108.136.142.140:9092

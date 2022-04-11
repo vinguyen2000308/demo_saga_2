@@ -13,5 +13,6 @@ import lombok.NoArgsConstructor;
 public class OrderItem {
 
     private String name;
+    private Integer total;
     private Double price;
 }

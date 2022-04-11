@@ -10,26 +10,18 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Data
 @Entity
-@Table(name = "message")
-public class Message {
+@Table(name = "received_messages")
+public class ReceivedMessages {
 
     @Id
-    @Column(name = "id")
-    private String messageId;
-
-    @Column(name = "destination")
-    private String destination;
-
-    @Column(name = "headers")
-    private String header;
-
-    @Column(name = "payload")
-    private String payload;
+    @Column(name = "message_id")
+    private String id;
 
 }

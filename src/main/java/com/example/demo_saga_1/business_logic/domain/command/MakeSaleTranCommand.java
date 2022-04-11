@@ -16,6 +16,7 @@ import java.util.List;
 public class MakeSaleTranCommand implements Command {
 
         private Long customerId;
+        private Long orderId;
         private List<OrderItem> orderItemList;
 
 }

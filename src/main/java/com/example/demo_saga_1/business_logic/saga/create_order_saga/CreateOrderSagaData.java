@@ -8,8 +8,9 @@ import com.example.demo_saga_1.business_logic.domain.dto.OrderItem;
 import com.example.demo_saga_1.business_logic.domain.message.CreateOrderReply;
 import com.example.demo_saga_1.business_logic.domain.message.CreateSaleTransReply;
 import com.example.demo_saga_1.business_logic.domain.message.ValidateCustomerReply;
-import com.example.demo_saga_1.business_logic.handler.SagaHandlerReply;
+import com.example.demo_saga_1.business_logic.handler.SagaHandlerReplyContext;
 import com.example.demo_saga_1.business_logic.kafka.KafkaProducer;
+import com.example.demo_saga_1.business_logic.saga.MessageRepo;
 import com.example.demo_saga_1.business_logic.saga.Saga;
 import com.example.demo_saga_1.business_logic.saga.SagaData;
 import com.example.demo_saga_1.domain.Data;
@@ -41,13 +42,16 @@ public class CreateOrderSagaData implements SagaData {
     private CreateOrderRequestDTO createOrderRequestDTO;
     private Saga saga;
     private KafkaProducer kafkaProducer;
+    private MessageRepo messageRepo;
 
-    public CreateOrderSagaData(CreateOrderRequestDTO createOrderRequestDTO, KafkaProducer kafkaProducer, Saga saga) {
+    public CreateOrderSagaData(CreateOrderRequestDTO createOrderRequestDTO, KafkaProducer kafkaProducer, Saga saga, MessageRepo messageRepo) {
         this.createOrderRequestDTO = createOrderRequestDTO;
         this.kafkaProducer = kafkaProducer;
         this.sagaId = UUID.randomUUID().toString();
         this.saga = saga;
+        this.messageRepo = messageRepo;
     }
+
 
     //   ORDER
     public CreateOrderCommand makeCreateOrderCommand() {
@@ -56,34 +60,41 @@ public class CreateOrderSagaData implements SagaData {
                 .isNewCustomer(this.createOrderRequestDTO.getIsNewCustomer())
                 .orderItemList(this.createOrderRequestDTO.getOrderItemList())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, sagaId);
+        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, sagaId, true);
         return command;
     }
-    private ConfirmCreateOrderCommand makeConfirmCreateOrderCommand(Long orderId) {
-        return ConfirmCreateOrderCommand.builder()
-                .orderId(orderId)
+
+    private ConfirmCreateOrderCommand makeConfirmCreateOrderCommand() {
+        ConfirmCreateOrderCommand command = ConfirmCreateOrderCommand.builder()
+                .orderId(replyFromOrder.getOrderId())
                 .build();
+        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, sagaId, false);
+        return command;
     }
+
     public boolean handleReplyFromOrder(Data data) throws Exception {
         if (checkReplyType(getReplyType(data), CreateOrderReply.class)) {
-            CreateOrderReply createOrderReply = (CreateOrderReply) SagaHandlerReply.getReplyMessage(data);
+            CreateOrderReply createOrderReply = (CreateOrderReply) SagaHandlerReplyContext.getReplyMessage(data);
             if (checkReply(createOrderReply)) {
-                SagaHandlerReply.result.remove(sagaId);
+                SagaHandlerReplyContext.remove(sagaId);
+                this.replyFromOrder = createOrderReply;
+                saveReplyMessage(data, messageRepo);
                 makeValidateCustomerCommand();
                 return setSuccess();
             } else {
-                SagaHandlerReply.result.remove(sagaId);
-                throw new Exception("Error in Order" + createOrderReply.getMessage());
+                SagaHandlerReplyContext.remove(sagaId);
+                throw new Exception(Const.ERROR_ORDER + createOrderReply.getMessage());
             }
         }
         return setFailure();
 
     }
+
     private CancelCreateOrderCommand makeCancelCreateOrderCommand() {
         CancelCreateOrderCommand command = CancelCreateOrderCommand.builder()
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, sagaId);
+        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, sagaId, false);
         return command;
     }
 
@@ -91,22 +102,24 @@ public class CreateOrderSagaData implements SagaData {
     private ValidateCustomerCommand makeValidateCustomerCommand() {
         ValidateCustomerCommand command = ValidateCustomerCommand.builder()
                 .customerId(createOrderRequestDTO.getCustomerId())
+                .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.CUSTOMER_SERVICE, sagaId);
+        kafkaProducer.sendMessage(saga, command, Const.CUSTOMER_SERVICE, sagaId, false);
         return command;
     }
+
     public boolean handleReplyFromCustomer(Data data) throws Exception {
         if (checkReplyType(getReplyType(data), ValidateCustomerReply.class)) {
-            ValidateCustomerReply validateCustomerReply = (ValidateCustomerReply) SagaHandlerReply.getReplyMessage(data);
+            ValidateCustomerReply validateCustomerReply = (ValidateCustomerReply) SagaHandlerReplyContext.getReplyMessage(data);
             if (checkReply(validateCustomerReply)) {
-                SagaHandlerReply.result.remove(sagaId);
+                SagaHandlerReplyContext.remove(sagaId);
+                saveReplyMessage(data, messageRepo);
                 makeSaleTranCommand();
                 return setSuccess();
             } else {
                 makeCancelCreateOrderCommand();
-                SagaHandlerReply.result.remove(sagaId);
-                throw new Exception("Error in Customer" + validateCustomerReply.getMessage());
-
+                SagaHandlerReplyContext.remove(sagaId);
+                throw new Exception(Const.ERROR_CUSTOMER + validateCustomerReply.getMessage());
             }
         }
         return setFailure();
@@ -116,23 +129,26 @@ public class CreateOrderSagaData implements SagaData {
     private MakeSaleTranCommand makeSaleTranCommand() {
         MakeSaleTranCommand command = MakeSaleTranCommand.builder()
                 .customerId(createOrderRequestDTO.getCustomerId())
+                .orderId(replyFromOrder.getOrderId())
                 .orderItemList(createOrderRequestDTO.getOrderItemList())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.SALE_TRAN_SERVICE, sagaId);
+        kafkaProducer.sendMessage(saga, command, Const.SALE_TRAN_SERVICE, sagaId, false);
         return command;
     }
+
     public String handleReplyFromSale(Data data) {
         if (checkReplyType(getReplyType(data), CreateSaleTransReply.class)) {
-            CreateSaleTransReply createSaleTransReply = (CreateSaleTransReply) SagaHandlerReply.getReplyMessage(data);
+            CreateSaleTransReply createSaleTransReply = (CreateSaleTransReply) SagaHandlerReplyContext.getReplyMessage(data);
             if (checkReply(createSaleTransReply)) {
-                SagaHandlerReply.result.remove(sagaId);
-                kafkaProducer.sendMessage(saga, makeConfirmCreateOrderCommand(replyFromOrder.getOrderId()), Const.ORDER_SERVICE, sagaId);
-                return "Create Order Success " + createSaleTransReply.getSaleTransId() + " saga id " + sagaId;
+                saveReplyMessage(data, messageRepo);
+                makeConfirmCreateOrderCommand();
+                SagaHandlerReplyContext.remove(sagaId);
+                return Const.SAGA_SUCCESS + createSaleTransReply.getSaleTransId() + " saga id " + sagaId;
             } else {
                 // send rollback order
                 makeCancelCreateOrderCommand();
-                SagaHandlerReply.result.remove(sagaId);
-                return "Error in make Sale Trans" + createSaleTransReply.getMessage();
+                SagaHandlerReplyContext.remove(sagaId);
+                return Const.ERROR_SALE_TRANS + createSaleTransReply.getMessage();
             }
         }
         return null;

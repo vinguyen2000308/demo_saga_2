@@ -41,18 +41,28 @@ public class KafkaProducer {
         return header;
     }
 
-    public Map<String, String> sendMessage(Saga saga, Command command, String topicName, String sagaId) {
+    public Map<String, String> sendMessage(Saga saga, Command command, String topicName, String sagaId, boolean isStartSaga) {
         ObjectMapper objectMapper = new ObjectMapper();
         ListenableFuture<SendResult<String, String>> future;
         Data data;
         Map<String, String> header = getHeader(command, saga, sagaId);
-        messageRepo.save(Message.builder()
-                        .messageId(header.get("message_id"))
-                .build());
         try {
+            String payload = objectMapper.writeValueAsString(command);
+            if (isStartSaga) {
+                sagaInstanceRepo.save(SagaInstance.builder()
+                        .sagaId(sagaId)
+                        .sagaType(saga.getClass().getSimpleName())
+                        .build());
+            }
+            messageRepo.save(Message.builder()
+                    .messageId(header.get("message_id"))
+                    .header(header.toString())
+                    .destination(topicName)
+                    .payload(payload)
+                    .build());
             data = Data.builder()
                     .header(header)
-                    .payload(objectMapper.writeValueAsString(command))
+                    .payload(payload)
                     .build();
             String message = objectMapper.writeValueAsString(data);
             future = kafkaTemplate.send(topicName, message);
