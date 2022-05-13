@@ -1,4 +1,4 @@
-package com.example.demo_saga_2.business_logic.domain.command;
+package com.example.demo_saga_2.business_logic.domain.command.sale;
 
 import com.example.demo_saga_2.business_logic.common.Const;
 import com.example.demo_saga_2.business_logic.domain.dto.OrderItem;

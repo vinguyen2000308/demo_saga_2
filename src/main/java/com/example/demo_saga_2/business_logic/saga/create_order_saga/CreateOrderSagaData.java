@@ -2,7 +2,11 @@ package com.example.demo_saga_2.business_logic.saga.create_order_saga;
 
 
 import com.example.demo_saga_2.business_logic.common.Const;
-import com.example.demo_saga_2.business_logic.domain.command.*;
+import com.example.demo_saga_2.business_logic.domain.command.customer.ValidateCustomerCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.CancelCreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.ConfirmCreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.CreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.sale.MakeSaleTranCommand;
 import com.example.demo_saga_2.business_logic.domain.dto.CreateOrderRequestDTO;
 import com.example.demo_saga_2.business_logic.domain.dto.OrderItem;
 import com.example.demo_saga_2.business_logic.domain.message.CreateOrderReply;
@@ -40,9 +44,12 @@ public class CreateOrderSagaData implements SagaData {
     private List<OrderItem> orderItemList;
     private CreateOrderReply replyFromOrder;
     private CreateOrderRequestDTO createOrderRequestDTO;
-    @ToString.Exclude private CreateOrderSaga saga;
-    @ToString.Exclude private KafkaProducer kafkaProducer;
-    @ToString.Exclude private MessageRepo messageRepo;
+    @ToString.Exclude
+    private CreateOrderSaga saga;
+    @ToString.Exclude
+    private KafkaProducer kafkaProducer;
+    @ToString.Exclude
+    private MessageRepo messageRepo;
 
     public CreateOrderSagaData(CreateOrderRequestDTO createOrderRequestDTO, KafkaProducer kafkaProducer, Saga saga, MessageRepo messageRepo) {
         this.createOrderRequestDTO = createOrderRequestDTO;
@@ -64,7 +71,7 @@ public class CreateOrderSagaData implements SagaData {
                 .isNewCustomer(this.createOrderRequestDTO.getIsNewCustomer())
                 .orderItemList(this.createOrderRequestDTO.getOrderItemList())
                 .build();
-        kafkaProducer.sendFirstMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendFirstMessage(saga, command, this);
         return command;
     }
 
@@ -72,7 +79,7 @@ public class CreateOrderSagaData implements SagaData {
         ConfirmCreateOrderCommand command = ConfirmCreateOrderCommand.builder()
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -97,7 +104,7 @@ public class CreateOrderSagaData implements SagaData {
         CancelCreateOrderCommand command = CancelCreateOrderCommand.builder()
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -107,7 +114,7 @@ public class CreateOrderSagaData implements SagaData {
                 .customerId(createOrderRequestDTO.getCustomerId())
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.CUSTOMER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -135,7 +142,7 @@ public class CreateOrderSagaData implements SagaData {
                 .orderId(replyFromOrder.getOrderId())
                 .orderItemList(createOrderRequestDTO.getOrderItemList())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.SALE_TRAN_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 

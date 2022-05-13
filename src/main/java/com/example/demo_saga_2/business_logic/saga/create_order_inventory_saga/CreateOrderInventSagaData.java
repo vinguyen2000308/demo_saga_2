@@ -1,10 +1,14 @@
 package com.example.demo_saga_2.business_logic.saga.create_order_inventory_saga;
 
 import com.example.demo_saga_2.business_logic.common.Const;
-import com.example.demo_saga_2.business_logic.domain.command.*;
+import com.example.demo_saga_2.business_logic.domain.command.customer.ValidateCustomerCommand;
 import com.example.demo_saga_2.business_logic.domain.command.inventory.CancelUpdateStockTotalCommand;
 import com.example.demo_saga_2.business_logic.domain.command.inventory.ConfirmUpdateStockTotalCommand;
 import com.example.demo_saga_2.business_logic.domain.command.inventory.UpdateStockTotalCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.CancelCreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.ConfirmCreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.order.CreateOrderCommand;
+import com.example.demo_saga_2.business_logic.domain.command.sale.MakeSaleTranCommand;
 import com.example.demo_saga_2.business_logic.domain.dto.CreateOrderRequestDTO;
 import com.example.demo_saga_2.business_logic.domain.dto.OrderItem;
 import com.example.demo_saga_2.business_logic.domain.dto.UpdateStockTotalItemDTO;
@@ -26,10 +30,7 @@ import lombok.ToString;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 import java.util.UUID;
 
 import static com.example.demo_saga_2.business_logic.saga.MessageUtil.*;
@@ -73,7 +74,7 @@ public class CreateOrderInventSagaData implements SagaData {
                 .isNewCustomer(this.createOrderRequestDTO.getIsNewCustomer())
                 .orderItemList(this.createOrderRequestDTO.getOrderItemList())
                 .build();
-        kafkaProducer.sendFirstMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendFirstMessage(saga, command, this);
         return command;
     }
 
@@ -81,7 +82,7 @@ public class CreateOrderInventSagaData implements SagaData {
         ConfirmCreateOrderCommand command = ConfirmCreateOrderCommand.builder()
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -106,7 +107,7 @@ public class CreateOrderInventSagaData implements SagaData {
         CancelCreateOrderCommand command = CancelCreateOrderCommand.builder()
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.ORDER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -116,7 +117,7 @@ public class CreateOrderInventSagaData implements SagaData {
                 .customerId(createOrderRequestDTO.getCustomerId())
                 .orderId(replyFromOrder.getOrderId())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.CUSTOMER_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 
@@ -145,22 +146,21 @@ public class CreateOrderInventSagaData implements SagaData {
                 .orderItemList(this.createOrderRequestDTO.getOrderItemList())
                 .updatedDate(LocalDateTime.now())
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.INVENTORY_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
     }
 
     private void makeCancelUpdateStockInventoryCommand() {
         CancelUpdateStockTotalCommand command = CancelUpdateStockTotalCommand.builder()
                 .stockTotalItems(this.stockTotalItems)
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.INVENTORY_SERVICE, this);
-
+        kafkaProducer.sendMessage(saga, command, this);
     }
 
     private void makeConfirmUpdateInventoryCommand() {
         ConfirmUpdateStockTotalCommand command = ConfirmUpdateStockTotalCommand.builder()
                 .stockTotalItems(this.stockTotalItems)
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.INVENTORY_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
     }
 
 
@@ -187,8 +187,8 @@ public class CreateOrderInventSagaData implements SagaData {
     private MakeSaleTranCommand makeSaleTranCommand() {
         List<OrderItem> orderItemList = createOrderRequestDTO.getOrderItemList();
         for (OrderItem item : orderItemList) {
-            for (UpdateStockTotalItemDTO dto: this.stockTotalItems) {
-                if(item.getName().equals(dto.getName()))
+            for (UpdateStockTotalItemDTO dto : this.stockTotalItems) {
+                if (item.getName().equals(dto.getName()))
                     item.setPrice(dto.getPrice());
             }
         }
@@ -199,7 +199,7 @@ public class CreateOrderInventSagaData implements SagaData {
                 .tax(this.tax)
                 .orderItemList(orderItemList)
                 .build();
-        kafkaProducer.sendMessage(saga, command, Const.SALE_TRAN_SERVICE, this);
+        kafkaProducer.sendMessage(saga, command, this);
         return command;
     }
 

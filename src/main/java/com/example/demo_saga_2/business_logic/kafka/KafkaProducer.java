@@ -43,7 +43,7 @@ public class KafkaProducer {
         return header;
     }
 
-    public Map<String, String> sendFirstMessage(Saga saga, CommandWithDestination command, String topicName, SagaData sagaData) {
+    public Map<String, String> sendFirstMessage(Saga saga, CommandWithDestination command, SagaData sagaData) {
         ObjectMapper objectMapper = new ObjectMapper();
         ListenableFuture<SendResult<String, String>> future;
         Data data;
@@ -68,7 +68,7 @@ public class KafkaProducer {
                     .payload(payload)
                     .build();
             String message = objectMapper.writeValueAsString(data);
-            future = kafkaTemplate.send(topicName, message);
+            future = kafkaTemplate.send(command.getDestination(), message);
             future.addCallback(new ListenableFutureCallback<>() {
                 @Override
                 public void onSuccess(SendResult<String, String> result) {
@@ -89,7 +89,7 @@ public class KafkaProducer {
     }
 
     @Transactional
-    public Map<String, String> sendMessage(Saga saga, CommandWithDestination command, String topicName, SagaData sagaData) {
+    public Map<String, String> sendMessage(Saga saga, CommandWithDestination command, SagaData sagaData) {
         ObjectMapper objectMapper = new ObjectMapper();
         ListenableFuture<SendResult<String, String>> future;
         Data data;
@@ -97,6 +97,12 @@ public class KafkaProducer {
         try {
             String payload = objectMapper.writeValueAsString(command);
             sagaInstanceRepo.updateSagaData(sagaData.toString(), sagaData.getSagaId());
+            messageRepo.save(Message.builder()
+                    .messageId(header.get("message_id"))
+                    .header(header.toString())
+                    .destination(command.getDestination())
+                    .payload(payload)
+                    .build());
             data = Data.builder()
                     .header(header)
                     .payload(payload)
