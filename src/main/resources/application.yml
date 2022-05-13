@@ -12,4 +12,4 @@ spring:
     consumer:
       auto-offset-reset: latest
       group-id: 1
-    bootstrap-servers: 108.136.45.99:9092
+    bootstrap-servers: 108.136.227.47:9092
